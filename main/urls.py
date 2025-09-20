@@ -1,3 +1,4 @@
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, TransactionViewSet, WalletViewSet, BalanceViewSet, BalanceSnapshotViewSet, FAQViewSet, TestimonialViewSet, login_view, signup_view
@@ -15,4 +16,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/login', login_view, name='login'),
     path('auth/signup', signup_view, name='signup'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
