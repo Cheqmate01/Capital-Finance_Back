@@ -1,0 +1,9 @@
+
+Hi {{ username }},
+
+Your deposit request of {{ amount }} {{ coin_type }} has been successfully received and is being processed.
+
+Your new balance will be updated shortly.
+
+Best regards,
+The Capital Finance Team

@@ -1,0 +1,7 @@
+
+Hi {{ username }},
+
+We have received your withdrawal request for {{ amount }} {{ coin_type }}. It is being processed.
+
+Best regards,
+The Capital Finance Team

@@ -1,27 +1,51 @@
-
 from django.core.mail import send_mail
 from django.conf import settings
+from django.template.loader import render_to_string
 
 def send_signup_email(user):
     """Sends a welcome email to a new user."""
     subject = 'Welcome to Capital Finance!'
-    message = f'Hi {user.username},\n\nThank you for registering at Capital Finance. We are excited to have you with us.'
+    context = {'username': user.username}
+    
+    # Render both HTML and plain text versions of the email
+    html_message = render_to_string('./templates/emails/signup_email.html', context)
+    plain_message = render_to_string('./templates/emails/signup_email.txt', context)
+    
     from_email = settings.DEFAULT_FROM_EMAIL
-    recipient_list = [user.email]
-    send_mail(subject, message, from_email, recipient_list)
+    recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
+    
+    send_mail(subject, plain_message, from_email, recipient_list, html_message=html_message)
 
 def send_deposit_email(user, transaction):
     """Sends an email notification for a successful deposit."""
     subject = 'Deposit Confirmation'
-    message = f'Hi {user.username},\n\nYour deposit request of {transaction.amount} {transaction.coin_type} has been successfully received and is being processed.\n\nYour new balance will be updated shortly.'
+    context = {
+        'username': user.username,
+        'amount': transaction.amount,
+        'coin_type': transaction.coin_type
+    }
+
+    html_message = render_to_string('./templates/emails/deposit_email.html', context)
+    plain_message = render_to_string('./templates/emails/deposit_email.txt', context)
+
     from_email = settings.DEFAULT_FROM_EMAIL
-    recipient_list = [user.email]
-    send_mail(subject, message, from_email, recipient_list)
+    recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
+    
+    send_mail(subject, plain_message, from_email, recipient_list, html_message=html_message)
 
 def send_withdrawal_email(user, transaction):
     """Sends an email notification for a withdrawal request."""
     subject = 'Withdrawal Request Received'
-    message = f'Hi {user.username},\n\nWe have received your withdrawal request for {transaction.amount} {transaction.coin_type}. It is being processed.'
+    context = {
+        'username': user.username,
+        'amount': transaction.amount,
+        'coin_type': transaction.coin_type
+    }
+
+    html_message = render_to_string('./templates/emails/withdrawal_email.html', context)
+    plain_message = render_to_string('./templates/emails/withdrawal_email.txt', context)
+
     from_email = settings.DEFAULT_FROM_EMAIL
-    recipient_list = [user.email]
-    send_mail(subject, message, from_email, recipient_list)
+    recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
+    
+    send_mail(subject, plain_message, from_email, recipient_list, html_message=html_message)

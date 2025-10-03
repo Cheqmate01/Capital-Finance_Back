@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deposit Confirmation</title>
 </head>
-<body>
+<body style="font-family: Arial, sans-serif; line-height: 1.6;">
     <h2>Deposit Confirmation</h2>
     <p>Hello {{ user.full_name }},</p>
-    <p>This email confirms that your deposit has been successfully processed.</p>
+    <p>This email confirms that your deposit request has been successfully recieved and is being processed.</p>
     <ul>
         <li><strong>Amount:</strong> {{ transaction.amount }} {{ transaction.currency }}</li>
         <li><strong>Date:</strong> {{ transaction.created_at|date:"F d, Y" }}</li>
     </ul>
-    <p>The amount has been credited to your account.</p>
+    <p>The amount will be credited to your account upon confirmation.</p>
     <br>
     <p>Best regards,</p>
     <p>The Capital Finance Team</p>

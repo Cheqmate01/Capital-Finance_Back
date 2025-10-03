@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Withdrawal Confirmation</title>
 </head>
-<body>
+<body style="font-family: Arial, sans-serif; line-height: 1.6;">
     <h2>Withdrawal Confirmation</h2>
     <p>Hello {{ user.full_name }},</p>
-    <p>This email confirms that your withdrawal request has been successfully processed.</p>
+    <p>This email confirms that your withdrawal request has been successfully received and is being processed.</p>
     <ul>
         <li><strong>Amount:</strong> {{ transaction.amount }} {{ transaction.currency }}</li>
         <li><strong>Date:</strong> {{ transaction.created_at|date:"F d, Y" }}</li>
     </ul>
-    <p>The amount has been debited from your account.</p>
+    <p>The amount will be debited from your account upon confirmation.</p>
     <br>
     <p>Best regards,</p>
     <p>The Capital Finance Team</p>
