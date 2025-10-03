@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Transaction, Wallet, Balance, BalanceSnapshot, FAQ, Testimonial
+from .models import User, Transaction, Balance, BalanceSnapshot, FAQ, Testimonial
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,13 +10,12 @@ class UserSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = '__all__'
+        fields = ['id', 'user', 'address', 'type', 'amount', 'currency', 'description', 'status', 'created_at', 'updated_at']
+        read_only_fields = ('user', 'status', 'created_at', 'updated_at')
 
-
-class WalletSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Wallet
-        fields = '__all__'
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
 
 
 class BalanceSerializer(serializers.ModelSerializer):

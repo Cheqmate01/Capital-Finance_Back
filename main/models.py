@@ -17,11 +17,8 @@ class User(AbstractUser):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ("in", "In"),
-        ("out", "Out"),
-        ("Deposit", "Deposit"),
-        ("Withdraw", "Withdraw"),
-        ("Income", "Income"),
+        ("deposit", "Deposit"),
+        ("withdraw", "Withdraw"),
     ]
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -29,17 +26,16 @@ class Transaction(models.Model):
         ("failed", "Failed"),
     ]
     CURRENCY_CHOICES = [
-        ("USD", "USD"),
         ("BTC", "BTC"),
         ("ETH", "ETH"),
         ("USDT", "USDT"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="transactions")
+    address = models.CharField(max_length=255)
     type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=20, decimal_places=8)
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES)
-    date = models.DateTimeField()
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -49,30 +45,11 @@ class Transaction(models.Model):
         return f"{self.user.username} - {self.type} - {self.amount} {self.currency}"
     
 
-class Wallet(models.Model):
-    CURRENCY_CHOICES = [
-        ("BTC", "BTC"),
-        ("ETH", "ETH"),
-        ("USDT TRC20", "USDT TRC20"),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="wallets")
-    currency = models.CharField(max_length=20, choices=CURRENCY_CHOICES)
-    address = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.username} - {self.currency}"
-    
-
 class Balance(models.Model):
     CURRENCY_CHOICES = [
-        ("USD", "USD"),
         ("BTC", "BTC"),
         ("ETH", "ETH"),
         ("USDT", "USDT"),
-        ("USDT TRC20", "USDT TRC20"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="balances")

@@ -5,7 +5,6 @@ from .models import *
 
 admin.site.register(User)
 admin.site.register(Transaction)
-admin.site.register(Wallet)
 admin.site.register(Balance)
 admin.site.register(FAQ)
 admin.site.register(Testimonial)

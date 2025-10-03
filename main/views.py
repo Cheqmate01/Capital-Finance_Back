@@ -7,8 +7,12 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # Create your views here.
-from .models import User, Transaction, Wallet, Balance, BalanceSnapshot, FAQ, Testimonial
-from .serializers import UserSerializer, TransactionSerializer, WalletSerializer, BalanceSerializer, BalanceSnapshotSerializer, FAQSerializer, TestimonialSerializer
+from .models import User, Transaction, Balance, BalanceSnapshot, FAQ, Testimonial
+from .serializers import UserSerializer, TransactionSerializer, BalanceSerializer, BalanceSnapshotSerializer, FAQSerializer, TestimonialSerializer
+from .email_utils import send_signup_email, send_deposit_email, send_withdrawal_email
+import os
+from collections import defaultdict
+import datetime
 
 User = get_user_model()
 
@@ -26,17 +30,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if user.is_authenticated:
             return Transaction.objects.filter(user=user)
         return Transaction.objects.none()
-
-
-class WalletViewSet(viewsets.ModelViewSet):
-    queryset = Wallet.objects.none()
-    serializer_class = WalletSerializer
-    permission_classes = [IsAuthenticated]
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return Wallet.objects.filter(user=user)
-        return Wallet.objects.none()
+    
+    def perform_create(self, serializer):
+        transaction = serializer.save(user=self.request.user)
+        # Check transaction type and send email accordingly
+        if transaction.type.lower() == 'deposit':
+            send_deposit_email(self.request.user, transaction)
+        elif transaction.type.lower() == 'withdrawal':
+            send_withdrawal_email(self.request.user, transaction)
 	
 
 class BalanceViewSet(viewsets.ModelViewSet):
@@ -65,41 +66,60 @@ class BalanceSnapshotViewSet(viewsets.ModelViewSet):
             'USDT': 1.0,         # 1 USDT = 1 USD
             'USDT TRC20': 1.0,   # 1 USDT TRC20 = 1 USD
         }
-        qs = self.get_queryset().filter(user=request.user).order_by('date')
-        from collections import defaultdict
-        date_totals = defaultdict(float)
-        for s in qs:
-            rate = rates.get(s.currency, 1.0)
-            usd_value = float(s.balance) * rate
-            date_totals[s.date] += usd_value
-        data = [
-            {'date': str(date), 'balance': total}
-            for date, total in sorted(date_totals.items())
-        ]
-        return Response(data)
+        
+        transactions = Transaction.objects.filter(user=request.user).order_by('created_at')
+        
+        if not transactions.exists():
+            return Response([{'date': datetime.date.today().isoformat(), 'total_balance_usd': 0}])
+
+        daily_balances = defaultdict(float)
+        
+        for tx in transactions:
+            rate = rates.get(tx.currency, 1.0) # Default to 1.0 if currency not in rates
+            amount_usd = float(tx.amount) * rate
+            
+            date_key = tx.created_at.date()
+
+            if tx.type.lower() == 'deposit':
+                daily_balances[date_key] += amount_usd
+            elif tx.type.lower() == 'withdrawal':
+                daily_balances[date_key] -= amount_usd
+            
+        # Create a sorted list of dates and fill gaps
+        sorted_dates = sorted(daily_balances.keys())
+        
+        all_dates_balances = []
+        cumulative_balance = 0
+        current_date = sorted_dates[0]
+        end_date = datetime.date.today()
+
+        while current_date <= end_date:
+            # Add the day's net change to the cumulative balance
+            cumulative_balance += daily_balances.get(current_date, 0)
+            
+            all_dates_balances.append({
+                'date': current_date.isoformat(),
+                'total_balance_usd': cumulative_balance
+            })
+            current_date += datetime.timedelta(days=1)
+
+        return Response(all_dates_balances)
 
 
 class FAQViewSet(viewsets.ModelViewSet):
-    queryset = FAQ.objects.none()
+    queryset = FAQ.objects.all()
     serializer_class = FAQSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return FAQ.objects.all()  # Or filter by user if needed
-        return FAQ.objects.none()
+        return FAQ.objects.all()
 
 
 class TestimonialViewSet(viewsets.ModelViewSet):
-    queryset = Testimonial.objects.none()
+    queryset = Testimonial.objects.all()
     serializer_class = TestimonialSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return Testimonial.objects.all()  # Or filter by user if needed
-        return Testimonial.objects.none()
-
+        return Testimonial.objects.all()
 
 
 # Custom login endpoint
@@ -151,6 +171,11 @@ def signup_view(request):
         full_name=full_name,
         email=email
     )
+    
+    # Send welcome email after user is created
+    if user.email:
+        send_signup_email(user)
+
     refresh = RefreshToken.for_user(user)
     return Response({
         "user": {
@@ -164,3 +189,30 @@ def signup_view(request):
             "refresh": str(refresh),
         }
     }, status=status.HTTP_201_CREATED)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def deposit_wallets(request):
+    """
+    Provides a list of company deposit wallet addresses from environment variables.
+    """
+    wallets = [
+        {
+            "id": 1,
+            "currency": "BTC",
+            "address": os.getenv("BTC_DEPOSIT_ADDRESS", "Address not configured"),
+        },
+        {
+            "id": 2,
+            "currency": "ETH",
+            "address": os.getenv("ETH_DEPOSIT_ADDRESS", "Address not configured"),
+        },
+        {
+            "id": 3,
+            "currency": "USDT TRC20",
+            "address": os.getenv("USDT_TRC20_DEPOSIT_ADDRESS", "Address not configured"),
+        },
+    ]
+    return Response(wallets)
