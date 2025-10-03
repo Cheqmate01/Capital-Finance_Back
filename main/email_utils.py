@@ -8,8 +8,8 @@ def send_signup_email(user):
     context = {'username': user.username}
     
     # Render both HTML and plain text versions of the email
-    html_message = render_to_string('./templates/emails/signup_email.html', context)
-    plain_message = render_to_string('./templates/emails/signup_email.txt', context)
+    html_message = render_to_string('emails/signup_email.html', context)
+    plain_message = render_to_string('emails/signup_email.txt', context)
     
     from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
@@ -25,8 +25,8 @@ def send_deposit_email(user, transaction):
         'coin_type': transaction.coin_type
     }
 
-    html_message = render_to_string('./templates/emails/deposit_email.html', context)
-    plain_message = render_to_string('./templates/emails/deposit_email.txt', context)
+    html_message = render_to_string('emails/deposit_email.html', context)
+    plain_message = render_to_string('emails/deposit_email.txt', context)
 
     from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
@@ -42,8 +42,8 @@ def send_withdrawal_email(user, transaction):
         'coin_type': transaction.coin_type
     }
 
-    html_message = render_to_string('./templates/emails/withdrawal_email.html', context)
-    plain_message = render_to_string('./templates/emails/withdrawal_email.txt', context)
+    html_message = render_to_string('emails/withdrawal_email.html', context)
+    plain_message = render_to_string('emails/withdrawal_email.txt', context)
 
     from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [user.email, "standardcapitalfinanceorg@gmail.com"]
