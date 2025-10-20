@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, TransactionViewSet, BalanceViewSet, BalanceSnapshotViewSet, FAQViewSet, TestimonialViewSet, login_view, signup_view, deposit_wallets
+from .views import UserViewSet, TransactionViewSet, BalanceViewSet, BalanceSnapshotViewSet, FAQViewSet, TestimonialViewSet, login_view, signup_view, deposit_wallets, profile_view
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -18,4 +18,5 @@ urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('deposit-wallets/', deposit_wallets, name='deposit-wallets'),
+    path('profile/', profile_view, name='profile'),
 ]

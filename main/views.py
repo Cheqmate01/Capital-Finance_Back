@@ -1,12 +1,13 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.hashers import make_password, check_password
-from rest_framework.decorators import api_view, action, permission_classes
+from rest_framework.decorators import api_view, action, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 import re
 import logging
 
@@ -23,6 +24,36 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
 	queryset = User.objects.all()
 	serializer_class = UserSerializer
+
+
+# Simple profile endpoint for the current authenticated user. This accepts
+# JSON and multipart/form-data (so the client can PATCH with a FormData
+# containing an image) and always returns JSON responses.
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+def profile_view(request):
+    user = request.user
+    if request.method == 'GET':
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    # PATCH - allow partial updates including file uploads
+    # If a file was uploaded (multipart/form-data), assign it directly to
+    # the user instance first so ImageField handles the UploadedFile object.
+    if request.FILES and 'profile_picture' in request.FILES:
+        user.profile_picture = request.FILES['profile_picture']
+        # Save early so serializer doesn't try to re-validate the file content
+        user.save()
+
+    # For other fields, use the serializer for a partial update
+    # Exclude files from serializer data to avoid double-processing
+    data = {k: v for k, v in request.data.items() if k not in request.FILES}
+    serializer = UserSerializer(user, data=data, partial=True, context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TransactionViewSet(viewsets.ModelViewSet):

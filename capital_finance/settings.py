@@ -189,10 +189,11 @@ SIMPLE_JWT = {
 }
 
 # Production Security Settings
-# Note: Uncomment and configure these once you have HTTPS setup.
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000 # One year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# Allow environment override; when DEBUG is True we keep these off to avoid
+# interfering with local development and tests.
+SECURE_SSL_REDIRECT = (os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True') and not DEBUG
+SESSION_COOKIE_SECURE = (os.environ.get('SESSION_COOKIE_SECURE', 'True') == 'True') and not DEBUG
+CSRF_COOKIE_SECURE = (os.environ.get('CSRF_COOKIE_SECURE', 'True') == 'True') and not DEBUG
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 31536000)) if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True') == 'True') and not DEBUG
+SECURE_HSTS_PRELOAD = (os.environ.get('SECURE_HSTS_PRELOAD', 'True') == 'True') and not DEBUG

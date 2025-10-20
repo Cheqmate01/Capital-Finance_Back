@@ -43,4 +43,5 @@ htmlcov/
 
 # Others
 *.bak
-*.tmp
+*.tm
+Capital-Finance/

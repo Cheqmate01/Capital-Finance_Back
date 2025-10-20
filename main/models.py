@@ -10,7 +10,7 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     settings = models.JSONField(default=dict, blank=True)
-    phone_number = models.CharField(max_length=15, min=11, blank=True, null=True)
+    phone_number = models.CharField(max_length=18, blank=True, null=True)
 
     def __str__(self):
         return self.username
