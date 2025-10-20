@@ -5,6 +5,10 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+import re
+import logging
 
 # Create your views here.
 from .models import User, Transaction, Balance, BalanceSnapshot, FAQ, Testimonial
@@ -155,35 +159,66 @@ def login_view(request):
 @permission_classes([AllowAny])
 def signup_view(request):
     data = request.data
-    full_name = data.get("full_name")
-    username = data.get("username")
+    full_name = (data.get("full_name") or "").strip()
+    username = (data.get("username") or "").strip()
     password = data.get("password")
-    email = data.get("email", "")  # Optional
+    email = (data.get("email") or "").strip()  # Optional but validated if provided
+    phone = (data.get("phone") or "").strip()  # Optional; requires model support to persist
+
     if not full_name or not username or not password:
         return Response({"detail": "Full name, username, and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
     if User.objects.filter(username=username).exists():
         return Response({"detail": "Username already registered."}, status=status.HTTP_400_BAD_REQUEST)
-    if email and User.objects.filter(email=email).exists():
-        return Response({"detail": "Email already registered."}, status=status.HTTP_400_BAD_REQUEST)
-    user = User.objects.create_user(
-        username=username,
-        password=password,
-        full_name=full_name,
-        email=email
-    )
-    
-    # Send welcome email after user is created
+
+    # Validate email if provided
+    if email:
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({"detail": "Invalid email address."}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email=email).exists():
+            return Response({"detail": "Email already registered."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Basic phone validation (E.164-like, 7-15 digits, optional leading +)
+    if phone:
+        if not re.match(r'^\+?[0-9]{7,15}$', phone):
+            return Response({"detail": "Invalid phone number format."}, status=status.HTTP_400_BAD_REQUEST)
+        # If your User model has a phone field, check uniqueness
+        if hasattr(User, 'phone') and User.objects.filter(phone=phone).exists():
+            return Response({"detail": "Phone number already registered."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Build create_user kwargs and only include phone if model supports it
+    create_kwargs = {
+        "username": username,
+        "password": password,
+        "full_name": full_name,
+        "email": email,
+    }
+    if phone and hasattr(User, 'phone'):
+        create_kwargs['phone'] = phone
+
+    user = User.objects.create_user(**create_kwargs)
+
+    # Send welcome email after user is created; do not block signup if email sending fails
     if user.email:
-        send_signup_email(user)
+        try:
+            send_signup_email(user)
+        except Exception:
+            logging.exception("Failed to send signup email to %s", user.email)
 
     refresh = RefreshToken.for_user(user)
+    resp_user = {
+        "id": user.id,
+        "username": user.username,
+        "full_name": user.full_name,
+        "email": user.email,
+    }
+    if hasattr(user, 'phone'):
+        resp_user['phone'] = getattr(user, 'phone', None)
+
     return Response({
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "full_name": user.full_name,
-            "email": user.email,
-        },
+        "user": resp_user,
         "token": {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
