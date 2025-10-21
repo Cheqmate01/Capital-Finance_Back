@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.core.cache import cache
 import re
 import logging
 
@@ -54,6 +55,13 @@ def profile_view(request):
     # If the client sends a 'profile_picture' value as a string (URL/path),
     # treat it as non-file and do not pass it to the ImageField validator.
     data = {k: v for k, v in request.data.items() if k not in request.FILES and k != 'profile_picture'}
+    # If client sends an empty string for date_of_birth, drop it so the
+    # DateField validator doesn't attempt to parse an empty string and fail.
+    dob_key = 'date_of_birth'
+    if dob_key in data:
+        val = data.get(dob_key)
+        if val is None or (isinstance(val, str) and val.strip() == ''):
+            data.pop(dob_key, None)
     serializer = UserSerializer(user, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         serializer.save()
@@ -118,6 +126,11 @@ class BalanceSnapshotViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def daily(self, request):
+        # Cache key per user to avoid recomputing on every request.
+        cache_key = f"portfolio_value_daily_user_{request.user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
         # Example hardcoded rates; replace with live rates as needed
         rates = {
             'USD': 1.0,
@@ -163,6 +176,8 @@ class BalanceSnapshotViewSet(viewsets.ModelViewSet):
             })
             current_date += datetime.timedelta(days=1)
 
+        # Cache computed result for a short time (e.g., 60 seconds)
+        cache.set(cache_key, all_dates_balances, timeout=60)
         return Response(all_dates_balances)
 
 
