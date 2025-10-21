@@ -34,6 +34,9 @@ class UserViewSet(viewsets.ModelViewSet):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def profile_view(request):
     user = request.user
+    logging.getLogger(__name__).debug('profile_view called: method=%s user=%s content_type=%s files=%s data_keys=%s',
+                                      request.method, getattr(user, 'id', None), request.META.get('CONTENT_TYPE'),
+                                      list(request.FILES.keys()), list(request.data.keys() if hasattr(request, 'data') else []))
     if request.method == 'GET':
         serializer = UserSerializer(user)
         return Response(serializer.data)
@@ -47,13 +50,35 @@ def profile_view(request):
         user.save()
 
     # For other fields, use the serializer for a partial update
-    # Exclude files from serializer data to avoid double-processing
-    data = {k: v for k, v in request.data.items() if k not in request.FILES}
+    # Exclude file fields from serializer data to avoid double-processing.
+    # If the client sends a 'profile_picture' value as a string (URL/path),
+    # treat it as non-file and do not pass it to the ImageField validator.
+    data = {k: v for k, v in request.data.items() if k not in request.FILES and k != 'profile_picture'}
     serializer = UserSerializer(user, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         serializer.save()
+        logging.getLogger(__name__).info('profile updated for user=%s', getattr(user, 'id', None))
         return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    logging.getLogger(__name__).warning('profile update failed for user=%s errors=%s', getattr(user, 'id', None), serializer.errors)
+    # Normalize error response to include a human-friendly message and structured errors
+    errors = serializer.errors
+    parts = []
+    try:
+        for field, msgs in errors.items():
+            if isinstance(msgs, (list, tuple)):
+                msg = ', '.join(str(m) for m in msgs)
+            else:
+                msg = str(msgs)
+            parts.append(f"{field}: {msg}")
+    except Exception:
+        parts = [str(errors)]
+    message = '; '.join(parts) if parts else 'Validation error'
+    return Response({
+        'detail': 'Validation failed',
+        'errors': errors,
+        'message': message,
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
